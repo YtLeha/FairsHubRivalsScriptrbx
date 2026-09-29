@@ -1,161 +1,217 @@
--- StarterPlayer/StarterPlayerScripts/FairsHubClient.client.lua
-local Players = game:GetService("Players")
-local RS = game:GetService("ReplicatedStorage")
-local UIS = game:GetService("UserInputService")
+-- [[ Rscripts Risk Notice ]]
+-- This script is not verified by sriptblox. Deal with caution.
+--
+-- Stay safe:
+--   • Never log in on unofficial Roblox sites or lookalike domains.
+--   • Real Roblox links use roblox.com (check the .com ending).
+--   • Treat fake Roblox login / "claim reward" pages as phishing.
+-- [[ End Rscripts Risk Notice ]]
 
-local Remotes = RS:WaitForChild("Remotes")
-local plr = Players.LocalPlayer
-local playerGui = plr:WaitForChild("PlayerGui")
+-- credits: https://discord.gg/x3NgjgSuC
+local repS = cloneref(game:GetService("ReplicatedStorage"))
+local plrs = cloneref(game:GetService("Players"))
+local runS = cloneref(game:GetService("RunService"))
+local ws = cloneref(game:GetService("Workspace"))
+local uis = cloneref(game:GetService("UserInputService"))
+local lplr = plrs.LocalPlayer
+local util = require(repS.Modules.Utility)
+local enum = require(repS.Modules.EnumLibrary)
+local FighterController = require(lplr.PlayerScripts.Controllers.FighterController)
+local SpectateController = require(lplr.PlayerScripts.Controllers:WaitForChild("SpectateController"))
 
--- === Создаём GUI ===
-local screen = Instance.new("ScreenGui")
-screen.Name = "FairsHub"
-screen.ResetOnSpawn = false
-screen.Parent = playerGui
-
--- Главная кнопка открытия
-local openBtn = Instance.new("TextButton")
-openBtn.Size = UDim2.new(0, 120, 0, 40)
-openBtn.Position = UDim2.new(0, 20, 0.5, -20)
-openBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
-openBtn.TextColor3 = Color3.fromRGB(120, 220, 255)
-openBtn.Font = Enum.Font.GothamBold
-openBtn.TextSize = 16
-openBtn.Text = "🎯 FairsHub"
-openBtn.Parent = screen
-
-local corner1 = Instance.new("UICorner"); corner1.CornerRadius = UDim.new(0, 8); corner1.Parent = openBtn
-
--- Основное окно
-local frame = Instance.new("Frame")
-frame.Size = UDim2.new(0, 320, 0, 380)
-frame.Position = UDim2.new(0.5, -160, 0.5, -190)
-frame.BackgroundColor3 = Color3.fromRGB(20, 20, 28)
-frame.Visible = false
-frame.Parent = screen
-
-local corner2 = Instance.new("UICorner"); corner2.CornerRadius = UDim.new(0, 12); corner2.Parent = frame
-
-local title = Instance.new("TextLabel")
-title.Size = UDim2.new(1, 0, 0, 45)
-title.BackgroundColor3 = Color3.fromRGB(35, 35, 50)
-title.TextColor3 = Color3.fromRGB(120, 220, 255)
-title.Font = Enum.Font.GothamBold
-title.TextSize = 20
-title.Text = "FairsHub — магазин читов"
-title.Parent = frame
-local corner3 = Instance.new("UICorner"); corner3.CornerRadius = UDim.new(0, 12); corner3.Parent = title
-
-local coinsLabel = Instance.new("TextLabel")
-coinsLabel.Size = UDim2.new(1, -20, 0, 30)
-coinsLabel.Position = UDim2.new(0, 10, 0, 50)
-coinsLabel.BackgroundTransparency = 1
-coinsLabel.TextColor3 = Color3.fromRGB(255, 220, 100)
-coinsLabel.Font = Enum.Font.GothamBold
-coinsLabel.TextSize = 16
-coinsLabel.TextXAlignment = Enum.TextXAlignment.Left
-coinsLabel.Text = "💰 Монеты: 200"
-coinsLabel.Parent = frame
-
--- Список способностей
-local abilities = {
-    { key = "XRay",       name = "Wallhack (X-Ray)",  price = 50 },
-    { key = "AutoAim",    name = "Auto-Aim",          price = 80 },
-    { key = "AutoDodge",  name = "Auto-Dodge",        price = 60 },
-    { key = "SpeedBoost", name = "Speed Boost",       price = 40 },
+getgenv().Config = {
+    Enabled = true,
+    FireRate = 0.0005,
+    WeaponSlot = "Melee" -- Options: "Primary", "Secondary", "Melee"
 }
 
-local y = 90
-for _, ab in ipairs(abilities) do
-    local btn = Instance.new("TextButton")
-    btn.Size = UDim2.new(1, -20, 0, 50)
-    btn.Position = UDim2.new(0, 10, 0, y)
-    btn.BackgroundColor3 = Color3.fromRGB(40, 40, 60)
-    btn.TextColor3 = Color3.fromRGB(220, 220, 255)
-    btn.Font = Enum.Font.Gotham
-    btn.TextSize = 15
-    btn.Text = ab.name.."  •  "..ab.price.."💰"
-    btn.Parent = frame
-    local c = Instance.new("UICorner"); c.CornerRadius = UDim.new(0, 8); c.Parent = btn
+local slots = {
+    Primary = 1,
+    Secondary = 2,
+    Melee = 3
+}
 
-    btn.MouseButton1Click:Connect(function()
-        Remotes.BuyAbility:FireServer(ab.key)
-    end)
-
-    -- Правая кнопка — использовать
-    btn.MouseButton2Click:Connect(function()
-        Remotes.UseAbility:FireServer(ab.key)
-    end)
-
-    y += 60
+local function getSlotNumber()
+    return slots[getgenv().Config.WeaponSlot] or 3
 end
 
-local hint = Instance.new("TextLabel")
-hint.Size = UDim2.new(1, -20, 0, 30)
-hint.Position = UDim2.new(0, 10, 1, -40)
-hint.BackgroundTransparency = 1
-hint.TextColor3 = Color3.fromRGB(150, 150, 180)
-hint.Font = Enum.Font.Gotham
-hint.TextSize = 12
-hint.Text = "ЛКМ — купить  •  ПКМ — использовать"
-hint.Parent = frame
-
--- Открытие/закрытие
-openBtn.MouseButton1Click:Connect(function()
-    frame.Visible = not frame.Visible
-end)
-
-UIS.InputBegan:Connect(function(input, gp)
-    if gp then return end
-    if input.KeyCode == Enum.KeyCode.F then
-        frame.Visible = not frame.Visible
+task.spawn(function()
+    local localFighter = FighterController.LocalFighter
+    while not localFighter do
+        task.wait(0.1)
+        localFighter = FighterController.LocalFighter
     end
-end)
-
--- Уведомления
-local notifyContainer = Instance.new("Frame")
-notifyContainer.Size = UDim2.new(0, 300, 1, -20)
-notifyContainer.Position = UDim2.new(1, -320, 0, 10)
-notifyContainer.BackgroundTransparency = 1
-notifyContainer.Parent = screen
-
-local notifyLayout = Instance.new("UIListLayout")
-notifyLayout.Padding = UDim.new(0, 6)
-notifyLayout.SortOrder = Enum.SortOrder.LayoutOrder
-notifyLayout.Parent = notifyContainer
-
-Remotes.Notify.OnClientEvent:Connect(function(text, color)
-    local lbl = Instance.new("TextLabel")
-    lbl.Size = UDim2.new(1, 0, 0, 36)
-    lbl.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
-    lbl.TextColor3 = color
-    lbl.Font = Enum.Font.Gotham
-    lbl.TextSize = 14
-    lbl.Text = text
-    lbl.Parent = notifyContainer
-    local c = Instance.new("UICorner"); c.CornerRadius = UDim.new(0, 6); c.Parent = lbl
-
-    task.delay(4, function()
-        if lbl then lbl:Destroy() end
+    pcall(function()
+        localFighter:EquipItem(getSlotNumber())
     end)
 end)
 
--- Голосование за бан (ПКМ по игроку в списке — упрощённо)
--- Здесь для примера: голос через кнопку G по ближайшему игроку
-UIS.InputBegan:Connect(function(input, gp)
-    if gp then return end
-    if input.KeyCode == Enum.KeyCode.G then
-        local char = plr.Character
-        if not char then return end
-        local closest, dist = nil, 50
-        for _, other in Players:GetPlayers() do
-            if other ~= plr and other.Character and other.Character:FindFirstChild("Head") then
-                local d = (other.Character.Head.Position - char.Head.Position).Magnitude
-                if d < dist then closest, dist = other, d end
-            end
-        end
-        if closest then
-            Remotes.VoteBan:FireServer(closest.UserId)
+task.spawn(function()
+    while true do
+        task.wait(1)
+        if not getgenv().Config.Enabled then continue end
+        local localFighter = FighterController.LocalFighter
+        if localFighter then
+            pcall(function()
+                localFighter:EquipItem(getSlotNumber())
+            end)
         end
     end
+end)
+
+local lastFire = 0
+local deflecting = {}
+plrs.PlayerRemoving:Connect(function(player)
+    deflecting[player] = nil
+end)
+
+local function updateDeflection()
+    if not FighterController or not FighterController.Objects then return end
+    for _, fighterObj in FighterController.Objects do
+        local player = fighterObj.Player
+        if not player then continue end
+        if not fighterObj.Entity or not fighterObj.Entity:IsAlive() or fighterObj:Get("IsSpectating") then
+            deflecting[player] = false
+            continue
+        end
+        local equipped = fighterObj.EquippedItem
+        local isKatana = equipped and equipped.ViewModel and equipped.ViewModel.Name == "Katana"
+        local isDeflecting = false
+        if isKatana then
+            isDeflecting = (equipped._attack_cooldown and equipped._attack_cooldown > tick()) or false
+        end
+        deflecting[player] = isDeflecting
+    end
+end
+
+local function isEnemy(player)
+    if player == lplr then return false end
+    local duel = SpectateController.CurrentDuelSubject
+    local localDueler = duel and duel:GetDueler(lplr)
+    local localTeam = localDueler and localDueler:Get("TeamID") or nil
+    if localTeam and duel and duel.Duelers then
+        for _, dueler in duel.Duelers do
+            if dueler.Player == player then
+                local team = dueler:Get("TeamID")
+                return team ~= localTeam
+            end
+        end
+    end
+    local pTeam = player:GetAttribute("TeamID")
+    local lTeam = lplr:GetAttribute("TeamID")
+    if pTeam and lTeam then
+        return pTeam ~= lTeam
+    end
+    return true
+end
+
+local function getClosestTarget()
+    local char = lplr.Character
+    if not char then return nil, nil, nil end
+    local myRoot = char:FindFirstChild("HumanoidRootPart")
+    if not myRoot then return nil, nil, nil end
+    local closestPlayer = nil
+    local closestRoot = nil
+    local closestHead = nil
+    local closestDist = 500
+    for _, player in plrs:GetPlayers() do
+        if not isEnemy(player) then continue end
+        local pChar = player.Character
+        if not pChar then continue end
+        local pRoot = pChar:FindFirstChild("HumanoidRootPart")
+        local pHead = pChar:FindFirstChild("Head")
+        local pHum = pChar:FindFirstChildWhichIsA("Humanoid")
+        if not (pRoot and pHead and pHum and pHum.Health > 0) then continue end
+        local dist = (myRoot.Position - pRoot.Position).Magnitude
+        if dist < closestDist then
+            closestDist = dist
+            closestPlayer = player
+            closestRoot = pRoot
+            closestHead = pHead
+        end
+    end
+    return closestPlayer, closestRoot, closestHead
+end
+
+local function hasKnifeViewModel(targetPlayer)
+    if not targetPlayer then return false end
+    local viewModels = ws:FindFirstChild("ViewModels")
+    if not viewModels then return false end
+    local targetName = targetPlayer.Name
+    for _, model in viewModels:GetChildren() do
+        if model:IsA("Model") 
+           and string.find(model.Name, targetName, 1, true) 
+           and string.find(model.Name, "Knife", 1, true) then
+            return true
+        end
+    end
+    return false
+end
+
+runS.Heartbeat:Connect(function()
+    updateDeflection()
+    local targetPlayer, targetRoot, targetHead = getClosestTarget()
+    local desyncCF = nil
+    
+    if targetRoot and targetHead then
+        local desyncPos
+        if hasKnifeViewModel(targetPlayer) then
+            desyncPos = (targetRoot.CFrame * CFrame.new(0, 6, 0)).Position
+        else
+            desyncPos = (targetRoot.CFrame * CFrame.new(0, 1, 2)).Position
+        end
+        desyncCF = CFrame.lookAt(desyncPos, targetHead.Position)
+    end
+
+    if desyncCF and lplr.Character then
+        local myRoot = lplr.Character:FindFirstChild("HumanoidRootPart")
+        if myRoot then
+            local oldCF = myRoot.CFrame
+            local oldVel = myRoot.Velocity
+            local oldRotVel = myRoot.RotVelocity
+            myRoot.CFrame = desyncCF
+            runS:BindToRenderStep("__restore", 101, function()
+                if myRoot then
+                    myRoot.CFrame = oldCF
+                    myRoot.Velocity = oldVel
+                    myRoot.RotVelocity = oldRotVel
+                end
+                runS:UnbindFromRenderStep("__restore")
+            end)
+        end
+    end
+
+    if not getgenv().Config.Enabled then return end
+    if not targetPlayer or not targetHead or not targetRoot then return end
+    if deflecting[targetPlayer] then return end
+    if not lplr.Character or not lplr.Character:FindFirstChild("HumanoidRootPart") then return end
+    if not FighterController or not FighterController.LocalFighter then return end
+    local item = FighterController.LocalFighter.EquippedItem
+    if not item then return end
+    if tick() - lastFire < getgenv().Config.FireRate then return end
+    lastFire = tick()
+    local originPos = desyncCF and desyncCF.Position or targetRoot.Position
+    local targetPos = targetHead.Position
+    local aimCF = CFrame.lookAt(originPos, targetPos)
+    local targetCF = targetHead.CFrame
+    local randomOffset = Vector3.new(
+        (math.random() - 0.5) * 0.1,
+        (math.random() - 0.5) * 0.1,
+        (math.random() - 0.5) * 0.1
+    )
+    local aimedPos = targetPos + randomOffset
+    local objSpaceHeadOffset = targetHead.CFrame:ToObjectSpace(CFrame.new(aimedPos))
+    local cameradata = {}
+    cameradata[utf8.char(1)] = {
+        [utf8.char(0)] = util:EncodeCFrame(aimCF),
+        [utf8.char(1)] = util:EncodeCFrame(targetCF),
+        [utf8.char(2)] = targetHead,
+        [utf8.char(3)] = util:EncodeCFrame(objSpaceHeadOffset)
+    }
+    repS.Remotes.Replication.Fighter.UseItem:FireServer(
+        item:Get("ObjectID"),
+        enum:ToEnum("StartShooting"),
+        cameradata,
+        nil
+    )
 end)
